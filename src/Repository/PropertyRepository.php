@@ -23,6 +23,7 @@ class PropertyRepository extends ServiceEntityRepository
     }
 
     /**
+     * @param PropertySearch $search
      * @return Query
      */
     public function findAllVisibleQuery(PropertySearch $search):Query
