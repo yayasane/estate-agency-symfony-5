@@ -2,9 +2,12 @@
 
 namespace App\Controller;
 
+use App\Entity\Contact;
 use App\Entity\Property;
 use App\Entity\PropertySearch;
+use App\Form\ContactType;
 use App\Form\PropertySearchType;
+use App\Notification\ContactNotification;
 use App\Repository\PropertyRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Knp\Component\Pager\PaginatorInterface;
@@ -35,19 +38,21 @@ class PropertyController extends AbstractController
      * @param Request $request
      * @return Response
      */
-    public function index(PaginatorInterface $paginator, Request $request):Response
+    public function index(PaginatorInterface $paginator, Request $request): Response
     {
         $search = new PropertySearch();
         $form = $this->createForm(PropertySearchType::class, $search);
         $form->handleRequest($request);
 
         $property = $paginator->paginate(
-                    $this->repository->findAllVisibleQuery($search),
-                    $request->query->getInt('page', 1), 12);
-        return $this->render('/property/index.html.twig',[
-            'current_menu'=>'properties',
-            'properties'=>$property,
-            'form'=>$form->createView()
+            $this->repository->findAllVisibleQuery($search),
+            $request->query->getInt('page', 1),
+            12
+        );
+        return $this->render('/property/index.html.twig', [
+            'current_menu' => 'properties',
+            'properties' => $property,
+            'form' => $form->createView()
         ]);
     }
 
@@ -55,17 +60,38 @@ class PropertyController extends AbstractController
      * @Route("/biens/{slug}-{id}", name="property.show", requirements={"slug": "[a-z0-9\-]*"})
      * @param Property $property
      * @param string $slug
+     * @param Request $request
      * @return Response
      */
-    public function show(Property $property, string $slug):Response
+    public function show(Property $property, string $slug, Request $request, ContactNotification $contactNotification): Response
     {
-        if ($property->getSlug() !== $slug)
-        {
-            $this->redirectToRoute('property.show', [
-                "id"=>$property->getId(),
-                'slug'=>$property->getSlug()
+
+        if ($property->getSlug() !== $slug) {
+            return $this->redirectToRoute('property.show', [
+                "id" => $property->getId(),
+                'slug' => $property->getSlug()
             ], 301);
         }
-        return $this->render('property/show.html.twig', ["current_menu"=>"properties", 'property'=>$property]);
+
+
+        $contact = new Contact();
+        $contact->setProperty($property);
+        $form = $this->createForm(ContactType::class, $contact);
+        $form->handleRequest($request);
+        if ($form->isSubmitted() and $form->isValid()) {
+            $contactNotification->notify($contact);
+            $this->addFlash('succes', 'Votre email a bien été envoyé');
+            /*return $this->redirectToRoute('property.show', [
+                "id"=>$property->getId(),
+                'slug'=>$property->getSlug()
+            ]);*/
+        }
+        return $this->render('property/show.html.twig', [
+            "current_menu" => "properties",
+            'property' => $property,
+            'form' => $form->createView()
+        ]);
     }
+
+    private $fgdkgkl;
 }
